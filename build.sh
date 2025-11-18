@@ -1,0 +1,1 @@
+docker build -t HancongZhang/big-market-front-app:1.1 .

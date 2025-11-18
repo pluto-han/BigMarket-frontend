@@ -5,10 +5,12 @@ import React, {useEffect, useRef, useState} from 'react'
 import {LuckyWheel} from '@lucky-canvas/react'
 
 import {queryRaffleAwardList, randomRaffle} from '@/apis'
+// @ts-ignore
 import {RaffleAwardVO} from "@/types/RaffleAwardVO";
 
 export function LuckyWheelPage() {
     const [prizes, setPrizes] = useState([{}])
+    // @ts-ignore
     const myLucky = useRef()
 
     const [blocks] = useState([
@@ -32,7 +34,7 @@ export function LuckyWheelPage() {
         const result = await queryRaffleAwardList(strategyId);
         const {code, info, data} = await result.json();
         if (code != "0000") {
-            window.alert("cant fetch award list code:" + code + " info:" + info)
+            window.alert("Failed to fetch award list! code:" + code + " info:" + info)
             return;
         }
 
@@ -56,14 +58,15 @@ export function LuckyWheelPage() {
         const result = await randomRaffle(strategyId);
         const {code, info, data} = await result.json();
         if (code != "0000") {
-            window.alert("cant fetch award list code:" + code + " info:" + info)
+            window.alert("Failed to raffle code:" + code + " info:" + info)
             return;
         }
         // 为了方便测试，mock 的接口直接返回 awardIndex 也就是奖品列表中第几个奖品。
-        return data.awardIndex -1;
+        return data.awardIndex - 1;
     }
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         queryRaffleAwardListHandle().then(r => {
         });
     }, [])
@@ -92,7 +95,7 @@ export function LuckyWheelPage() {
             onEnd={
                 // @ts-ignore
                 prize => {
-                    alert('Congrats! You win【' + prize.fonts[0].text + '】award id【' + prize.fonts[0].id + '】')
+                    alert('Congrats! You win【' + prize.fonts[0].text + '】award ID【' + prize.fonts[0].id + '】')
                 }
             }
         />
