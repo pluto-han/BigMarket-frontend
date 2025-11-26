@@ -12,7 +12,7 @@ import {draw, queryRaffleAwardList} from "@/apis";
  */
 export function LuckyGridPage() {
     const [prizes, setPrizes] = useState([{}])
-    const myLucky = useRef()
+    const myLucky = useRef<any>(null)
 
     const queryRaffleAwardListHandle = async () => {
         const queryParams = new URLSearchParams(window.location.search);
