@@ -8,6 +8,6 @@ export interface RaffleAwardVO {
     sort: number;
     awardRuleLockCount: number;
     isAwardUnlock: boolean;
-    waitUnLockCount: number;
+    waitUnlockCount: number;
 
 }
