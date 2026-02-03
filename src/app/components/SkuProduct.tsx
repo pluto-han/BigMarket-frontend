@@ -1,86 +1,96 @@
-import {useEffect, useState} from "react";
-import {SkuProductResponseDTO} from "@/types/SkuProductResponseDTO";
-import {creditPayExchangeSku, querySkuProductListByActivityId} from "@/apis";
+import { useEffect, useState } from "react";
+import { SkuProductResponseDTO } from "@/types/SkuProductResponseDTO";
+import { creditPayExchangeSku, querySkuProductListByActivityId } from "@/apis";
 
 // @ts-ignore
-export function SkuProduct({handleRefresh}) {
-    const [SkuProductResponseDTOList, setSkuProductResponseDTOList] = useState<SkuProductResponseDTO[]>([]);
+export function SkuProduct({ handleRefresh, onClose }) { // <--- 1. 新增 onClose 接收
+    const [skuList, setSkuList] = useState<SkuProductResponseDTO[]>([]);
 
     const querySkuProductListByActivityIdHandle = async () => {
         const queryParams = new URLSearchParams(window.location.search);
-        const result = await querySkuProductListByActivityId(Number(queryParams.get('activityId')));
+        const activityId = Number(queryParams.get('activityId'));
+        if (!activityId) return;
 
-        const {code, info, data}: { code: string; info: string; data: SkuProductResponseDTO[] } = await result.json();
-
-        if (code != "0000") {
-            window.alert("查询产品列表，接口调用失败 code:" + code + " info:" + info)
-            return;
+        try {
+            const result = await querySkuProductListByActivityId(activityId);
+            const { code, data }: { code: string; data: SkuProductResponseDTO[] } = await result.json();
+            if (code === "0000") {
+                setSkuList(data); 
+            }
+        } catch (e) {
+            console.error("加载商品失败", e);
         }
-        setSkuProductResponseDTOList(data)
     }
 
     const creditPayExchangeSkuHandle = async (sku: number) => {
         const queryParams = new URLSearchParams(window.location.search);
-        const result = await creditPayExchangeSku(String(queryParams.get('userId')), sku);
-        const {code, info, data}: { code: string; info: string; data: boolean } = await result.json();
+        const userId = String(queryParams.get('userId'));
+        
+        try {
+            const result = await creditPayExchangeSku(userId, sku);
+            const { code, info } = await result.json();
+            
+            if (code !== "0000") {
+                window.alert("兑换失败: " + info);
+                return;
+            }
+            
+            // --- 核心修复开始 ---
+            
+            // 2. 先关闭弹窗，提升体验
+            if (onClose) onClose();
 
-        if (code != "0000") {
-            window.alert("对话抽奖次数，接口调用失败 code:" + code + " info:" + info)
-            return;
+            // 3. 延时 500ms 再刷新数据
+            // 解决了 "My Credit 更新了但 Draw Times 没变" 的问题
+            setTimeout(() => {
+                handleRefresh();
+            }, 500);
+
+            // --- 核心修复结束 ---
+
+        } catch (e) {
+            console.error("兑换异常", e);
         }
-
-        const timer = setTimeout(() => {
-            handleRefresh()
-        }, 350);
-
-        // 清除定时器，以防组件在执行前被卸载
-        return () => clearTimeout(timer);
-
     }
 
     useEffect(() => {
-        querySkuProductListByActivityIdHandle().then(r => {
-        });
+        querySkuProductListByActivityIdHandle();
     }, [])
 
     return (
-        <>
-            <div className="container mx-auto p-4">
-                <div className="flex flex-wrap justify-center gap-4">
-                    {SkuProductResponseDTOList.map((skuProduct, index) => (
-                        <div key={index}>
-                            <div
-                                className="max-w-xs rounded overflow-hidden shadow-lg p-4 bg-gradient-to-r from-blue-400 to-green-500 transform hover:scale-105 transition-transform duration-300">
-                                <div className="px-4 py-2">
-                                    <div
-                                        className="font-bold text-2xl mb-2 text-center text-white">{skuProduct.activityCount.dayCount}次抽奖
-                                    </div>
-                                </div>
-                                <div className="px-4 pt-2 pb-2 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button
-                                            className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-1 px-4 rounded-full">{skuProduct.productAmount}￥
-                                        </button>
-                                        <button onClick={() => creditPayExchangeSkuHandle(skuProduct.sku)}
-                                                className="bg-white text-blue-700 font-bold py-1 px-4 rounded-full hover:bg-gray-200 flex items-center cursor-pointer">
-                                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor"
-                                                 viewBox="0 0 24 24"
-                                                 xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 7M17 13l1.4 7M9 21h6"></path>
-                                            </svg>
-                                            兑换
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {skuList.map((product, index) => (
+                <div 
+                    key={index}
+                    className="relative group overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+                    style={{
+                        background: 'linear-gradient(135deg, #7062e0 0%, #5a49ce 100%)',
+                        boxShadow: '0 8px 32px rgba(90, 73, 206, 0.25)'
+                    }}
+                >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                        <div className="text-3xl font-black text-yellow-300 mb-4 drop-shadow-sm">
+                            {product.activityCount.dayCount} Times
                         </div>
-                    ))}
+
+                        <div className="flex items-center gap-4 w-full justify-center">
+                            <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-white font-medium text-sm border border-white/10">
+                                {product.productAmount}$
+                            </div>
+
+                            <button 
+                                onClick={() => creditPayExchangeSkuHandle(product.sku)}
+                                className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-5 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2 transition-colors cursor-pointer"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 7M17 13l1.4 7M9 21h6"></path></svg>
+                                Redeem
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-
-        </>
+            ))}
+        </div>
     )
-
 }

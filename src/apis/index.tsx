@@ -139,28 +139,21 @@ export const isCalendarSignRebate = (userId?: string) => {
  * @param userId        用户ID
  * @param activityId    活动ID
  */
-export const queryRaffleStrategyRuleWeight = (userId?: string, activityId?: number) => {
-    try {
-        return fetch(`${apiHostUrl}/api/v1/raffle/strategy/query_raffle_strategy_rule_weight`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json;charset=utf-8'
-            },
-            body: JSON.stringify({
-                userId: userId,
-                activityId: activityId
-            })
+// 查询抽奖策略权重规则 (保底进度)
+export const queryRaffleStrategyRuleWeight = (userId: string, activityId: number) => {
+    return fetch(`${apiHostUrl}/api/v1/raffle/strategy/query_raffle_strategy_rule_weight`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=utf-8'
+        },
+        body: JSON.stringify({
+            userId: userId,
+            activityId: activityId
         })
-    } catch (error) {
-        return fetch("{\n" +
-            "    \"code\": \"0001\",\n" +
-            "    \"info\": \"调用失败\",\n" +
-            "    \"data\": [\n" +
-            "}");
-    }
+    })
 }
 
-export const queryUserCreditAccount = (userId?: string)=>{
+export const queryUserCreditAccount = (userId: string)=>{
     try {
         return fetch(`${apiHostUrl}/api/v1/raffle/activity/query_user_credit_account?userId=${userId}`, {
             method: 'POST',
@@ -214,4 +207,3 @@ export const creditPayExchangeSku = (userId?: string, sku?: number) => {
             "}");
     }
 }
-

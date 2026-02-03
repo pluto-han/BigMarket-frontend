@@ -1,163 +1,138 @@
-import {calendarSignRebate, isCalendarSignRebate, queryUserActivityAccount, queryUserCreditAccount} from "@/apis";
-import React, {useEffect, useState} from "react";
-import {UserActivityAccountVO} from "@/types/UserActivityAccountVO";
+import { calendarSignRebate, isCalendarSignRebate, queryUserActivityAccount, queryUserCreditAccount } from "@/apis";
+import React, { useEffect, useState } from "react";
+import { UserActivityAccountVO } from "@/types/UserActivityAccountVO";
 
 // @ts-ignore
-export function MemberCard({allRefresh}) {
-    const [refresh, setRefresh] = useState(0);
-
-    const [dayCount, setDayCount] = useState(0)
-    const [creditAmount, setCreditAmount] = useState(0)
+// 【修改点1】：新增接收 onCheckInError 参数
+export function MemberCard({ allRefresh, onRedeemClick, onBuyClick, onCheckInError }) {
+    const [dayCount, setDayCount] = useState(0);
+    const [creditAmount, setCreditAmount] = useState(0);
     const [sign, setSign] = useState(false);
-
     const [userId, setUserId] = useState('');
 
     const getParams = async () => {
         setUserId(String(new URLSearchParams(window.location.search).get('userId')));
     }
 
-    const handleRefresh = () => {
-        setRefresh(refresh + 1)
-    };
-
-    // 获取当前日期
-    const currentDate = new Date();
-    // 格式化日期为 YYYY年MM月DD日
-    const formattedDate = currentDate.getFullYear() + '年'
-        + ('0' + (currentDate.getMonth() + 1)).slice(-2) + '月'
-        + ('0' + currentDate.getDate()).slice(-2) + '日';
-
     const queryUserActivityAccountHandle = async () => {
         const queryParams = new URLSearchParams(window.location.search);
         const result = await queryUserActivityAccount(String(queryParams.get('userId')), Number(queryParams.get('activityId')));
-        // 查询账户数据
-        const {code, info, data}: { code: string; info: string; data: UserActivityAccountVO } = await result.json();
-
-        if (code != "0000") {
-            window.alert("查询活动账户额度，接口调用失败 code:" + code + " info:" + info)
-            return;
-        }
-
-        // 日可抽奖额度
-        setDayCount(data.dayCountSurplus)
+        const { code, data }: { code: string; data: UserActivityAccountVO } = await result.json();
+        if (code === "0000") setDayCount(data.dayCountSurplus);
     }
 
     const queryUserCreditAccountHandle = async () => {
         const queryParams = new URLSearchParams(window.location.search);
         const result = await queryUserCreditAccount(String(queryParams.get('userId')));
-        const {code, info, data}: { code: string; info: string; data: number } = await result.json();
-
-        if (code != "0000") {
-            window.alert("查询活动账户额度，接口调用失败 code:" + code + " info:" + info)
-            return;
-        }
-
-        // 用户积分
-        setCreditAmount(data)
+        const { code, data }: { code: string; data: number } = await result.json();
+        if (code === "0000") setCreditAmount(data);
     }
 
-    const calendarSignRebateHandle = async () => {
+    const queryIsCalendarSignRebateHandle = async () => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const userIdStr = String(queryParams.get('userId'));
+        try {
+            const result = await isCalendarSignRebate(userIdStr);
+            const { code, data }: { code: string; data: boolean } = await result.json();
+            if (code === "0000" && data === true) {
+                setSign(true);
+            } else {
+                setSign(false);
+            }
+        } catch (e) {
+            console.error("Check sign status failed", e);
+        }
+    }
+    
+    // 【修改点2】：拆分点击逻辑
+    const handleCheckInClick = async () => {
+        // 如果已经签到 (sign === true)，点击则触发报错弹窗
         if (sign) {
-            window.alert("今日已签到！")
+            if (onCheckInError) onCheckInError();
             return;
         }
+
+        // 如果没签到，走正常的签到流程
         const queryParams = new URLSearchParams(window.location.search);
         const result = await calendarSignRebate(String(queryParams.get('userId')));
-        const {code, info}: { code: string; info: string; } = await result.json();
+        const {code} = await result.json();
 
-        if (code != "0000" && code != "0003") {
-            window.alert("日历签到返利接口，接口调用失败 code:" + code + " info:" + info)
-            return;
+        if (code === "0000" || code === "0003") {
+             setSign(true); 
+             queryUserActivityAccountHandle();
+             queryUserCreditAccountHandle();   
         }
-
-        setSign(true);
-
-        // 设置一个3秒后执行的定时器
-        const timer = setTimeout(() => {
-            handleRefresh()
-        }, 550);
-
-        // 清除定时器，以防组件在执行前被卸载
-        return () => clearTimeout(timer);
     }
-
-    const isCalendarSignRebateHandle = async () => {
-
-        const queryParams = new URLSearchParams(window.location.search);
-        const result = await isCalendarSignRebate(String(queryParams.get('userId')));
-        const {code, info, data}: { code: string; info: string; data: boolean } = await result.json();
-
-        if (code != "0000") {
-            window.alert("判断是否签到接口，接口调用失败 code:" + code + " info:" + info)
-            return;
-        }
-
-        setSign(data);
-    }
-
 
     useEffect(() => {
-        getParams().then(r => {
-        });
+        getParams();
+        queryUserActivityAccountHandle();
+        queryUserCreditAccountHandle();
+        queryIsCalendarSignRebateHandle();
+    }, [allRefresh]);
 
-        queryUserActivityAccountHandle().then(r => {
-        });
-
-        queryUserCreditAccountHandle().then(r => {
-        });
-
-        isCalendarSignRebateHandle().then(r => {
-        });
-    }, [refresh, allRefresh])
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return (
-        <>
-            <div
-                className="relative max-w-sm mx-auto bg-gradient-to-r from-blue-600 to-teal-600 rounded-xl shadow-xl overflow-hidden md:max-w-2xl mb-10">
-                <div className="md:flex">
-                    <div className="p-8 flex-1">
-                        <a href="#"
-                           className="block mt-1 text-2xl leading-tight font-semibold text-white hover:text-gray-300 transition duration-300 ease-in-out">营销会员卡</a>
-                        <div className="mt-4">
-                            <p className="text-lg text-gray-100 flex items-center">
-                                <span className="material-icons mr-2">💰</span>
-                                我的积分：
-                                <span
-                                    className="font-bold text-gray-100 ml-1 bg-white bg-opacity-20 rounded-full px-2 py-1">
-                        {creditAmount ? creditAmount : 0}￥
-                    </span>
-                            </p>
-                            <p className="text-lg text-gray-100 flex items-center mt-2">
-                                <span className="material-icons mr-2">🪅</span>
-                                抽奖次数：
-                                <span
-                                    className="font-bold text-gray-100 ml-1 bg-white bg-opacity-20 rounded-full px-2 py-1">
-                        {dayCount ? dayCount : 0}
-                    </span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="p-8 flex items-center justify-between">
-                        <button onClick={calendarSignRebateHandle} style={{cursor: "pointer"}}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
-                            {sign ? "已签" : "签到"}
-                        </button>
-                        <div className="text-gray-100 text-md font-semibold ml-4">
-                            {formattedDate}
-                        </div>
-                    </div>
-                </div>
-                <button onClick={handleRefresh} style={{cursor: "pointer"}}
-                        className="absolute bottom-4 right-4 bg-white hover:bg-gray-200 text-black font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
-                    刷新⌛️
-                </button>
-                <div
-                    className="absolute top-4 right-4 bg-white bg-opacity-20 text-white font-bold py-1 px-3 rounded-full shadow-md">
-                    id: {userId}
-                </div>
+        <div className="relative w-full max-w-7xl mx-auto mb-8 rounded-3xl overflow-hidden glass-container-border p-6 md:p-8">
+            <div className="absolute inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer"></div>
             </div>
 
-        </>
-    )
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span className="text-blue-400">💎</span> Membership Card
+                    </h2>
+                    <div className="bg-white/10 border border-white/10 px-4 py-1 rounded-full text-xs text-white font-mono">
+                        ID: {userId || 'GUEST'}
+                    </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-40 shadow-inner">
+                        <span className="text-4xl font-black text-yellow-400 drop-shadow-md">{creditAmount.toFixed(2)}$</span>
+                        <span className="text-gray-400 text-sm mt-2 font-medium">My Credit</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-40 shadow-inner">
+                        <span className="text-4xl font-black text-orange-400 drop-shadow-md">{dayCount}</span>
+                        <span className="text-gray-400 text-sm mt-2 font-medium">Draw Times</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-40 shadow-inner">
+                        <span className="text-3xl font-bold text-blue-300 drop-shadow-md">{today}</span>
+                        <span className="text-gray-400 text-sm mt-2 font-medium">Today's Date</span>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-4">
+                    <button 
+                        onClick={onBuyClick}
+                        className="bg-[#22c55e] hover:bg-[#16a34a] text-white px-6 py-2 rounded-full flex items-center gap-2 hover:scale-105 transform transition shadow-lg font-bold"
+                    >
+                        <span>💎</span> Buy Credits
+                    </button>
+
+                    <button 
+                        onClick={onRedeemClick} 
+                        className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-6 py-2 rounded-full flex items-center gap-2 hover:scale-105 transform transition shadow-lg font-bold"
+                    >
+                        <span>🎲</span> Redeem Draw Times
+                    </button>
+
+                    {/* 【修改点3】：让已签到状态(绿色)也能点击(cursor-pointer)，并保留交互动画 */}
+                    <button 
+                        onClick={handleCheckInClick}
+                        className={`px-6 py-2 rounded-full flex items-center gap-2 text-white shadow-lg font-bold transition transform hover:scale-105 cursor-pointer
+                            ${sign 
+                                ? 'bg-[#22c55e]' // 已签到：绿色
+                                : 'bg-gray-600 hover:bg-gray-500' // 未签到：灰色
+                            }
+                        `}
+                    >
+                        <span>📅</span> {sign ? 'Checked In Today' : 'Check In To Get Credits!'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
 }
