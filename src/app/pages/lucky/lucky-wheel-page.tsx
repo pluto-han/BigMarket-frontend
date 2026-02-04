@@ -105,7 +105,29 @@ export function LuckyWheelPage({ handleRefresh, onWin, onDrawTenTimes }) {
                 setDrawLoading(false);
                 return -1;
             }
-            return data.awardIndex - 1;
+            
+            // ============================================================
+            // 【核心修复】不再使用 data.awardIndex - 1
+            // 而是遍历当前前端渲染的 prizes 数组，匹配 awardId
+            // ============================================================
+            
+            // 1. 获取中奖 ID
+            const winningAwardId = String(data.awardId);
+            
+            // 2. 在 prizes 数组里查找这个 ID 对应的索引 (findIndex)
+            // 注意：我们在构建 prizes 时，把 id 存放在了 fonts[0].id 里
+            const winningIndex = prizes.findIndex(prize => 
+                prize.fonts && prize.fonts[0] && prize.fonts[0].id === winningAwardId
+            );
+
+            // 3. 如果找到了，返回这个索引；没找到则兜底使用后端的 index
+            if (winningIndex !== -1) {
+                return winningIndex;
+            } else {
+                console.warn("Frontend prize mismatch! Fallback to backend index.");
+                return data.awardIndex - 1;
+            }
+            
         } catch (e) {
             setDrawLoading(false);
             return -1;
