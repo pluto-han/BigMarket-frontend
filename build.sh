@@ -1,1 +1,1 @@
-docker build -t hancongzhang/big-market-front-app:1.1 .
+docker build -t hancongzhang/big-market-front-app:3.0 .
