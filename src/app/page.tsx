@@ -96,7 +96,7 @@ export default function Home() {
             <footer className="text-center text-white/30 text-xs mt-12 mb-4">
                 More details about this project can be found on{' '}
                 <a 
-                    href="https://github.com/HancongZhang" 
+                    href="https://github.com/pluto-han/BigMarket" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-[#3A82F3] hover:text-[#3A82F3]/80 hover:underline transition-colors cursor-pointer"
